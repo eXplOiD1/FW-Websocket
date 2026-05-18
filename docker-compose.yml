@@ -1,0 +1,48 @@
+# ============================================================================
+# Framework WebSocket-Server — Portainer Web-Editor Stack (funktioniert)
+# ============================================================================
+#
+# So aufsetzen (kein Git, kein Image-Build, kein Dockerfile nötig):
+#
+#  1. Ordner  framework/websocket-server/  auf den Docker-Host kopieren,
+#     z. B. nach  /opt/framework-ws  (server.js, package.json, lib/, config.js).
+#
+#  2. Portainer → Stacks → Add stack → Build method: "Web editor"
+#     → Name z. B. "framework-ws" → DIESEN Inhalt einfügen.
+#
+#  3. Werte unten anpassen:
+#       - volumes: linker Pfad = wohin du den Ordner in Schritt 1 kopiert hast
+#       - API_URL = Framework-Basis-URL, die der CONTAINER erreichen kann
+#                   (für WS-Token-Validierung via /api/websocket-token.php)
+#       - CORS_ORIGIN = Origin der Seite (für Tests auch "*")
+#     → "Deploy the stack".
+#
+#  Erfolg: Container-Log zeigt "WebSocket server running on 0.0.0.0:3001".
+#  Test:   http://<host>:3001/health  →  {"status":"ok"}
+#
+#  Hinweis: DB ist NICHT nötig für den Dashboard-/Notification-Push-Test;
+#  ein On-Connect-Fehler beim Laden von Pending-Notifications wird nur
+#  geloggt und ist harmlos. node:20-alpine ist ein öffentliches Image;
+#  die Dependencies werden beim Start aus dem gemounteten Ordner installiert.
+#
+#  Danach noch nötig: wss-Reverse-Proxy (die https-Seite darf kein ws://
+#  öffnen) → diese öffentliche https/wss-URL in
+#  Einstellungen → System → ⚡ WebSocket eintragen.
+# ============================================================================
+services:
+  framework-ws:
+    image: node:20-alpine
+    container_name: framework-ws
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - /opt/framework-ws:/app          # ← Pfad aus Schritt 1
+    command: sh -c "npm install --omit=dev --no-audit --no-fund && node server.js"
+    ports:
+      - "3001:3001"
+    environment:
+      WS_PORT: "3001"
+      WS_HOST: "0.0.0.0"
+      CORS_ORIGIN: "https://img.deuba24.com"
+      API_URL: "https://img.deuba24.com/tools/framework"
+      LOG_LEVEL: "info"
