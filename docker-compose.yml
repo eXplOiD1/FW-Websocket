@@ -1,43 +1,40 @@
 # ============================================================================
-# Framework WebSocket-Server — Portainer Web-Editor Stack (funktioniert)
+# Framework WebSocket-Server — Portainer REPOSITORY-Stack (Image-Build)
 # ============================================================================
 #
-# So aufsetzen (kein Git, kein Image-Build, kein Dockerfile nötig):
+# WICHTIG: KEIN Bind-Mount. Der Code wird via Dockerfile INS IMAGE kopiert,
+# darum ist KEINE Datei auf dem Docker-Host nötig. Das vorherige ENOENT
+# (/app/package.json fehlt) kam vom leeren Host-Mount — der ist hier weg.
 #
-#  1. Ordner  framework/websocket-server/  auf den Docker-Host kopieren,
-#     z. B. nach  /opt/framework-ws  (server.js, package.json, lib/, config.js).
+# So deployen:
+#  1. Diese Datei + das Dockerfile (beide in framework/websocket-server/)
+#     müssen im GitHub-Repo liegen (per GitHub-Uploader hochladen).
+#  2. Portainer → Stacks → Add stack → Build method: "Repository"
+#       Repository URL : <deine echte GitHub-Repo-URL>
+#       Authentication : AN falls privat (GitHub-User + Personal Access Token)
+#       Reference      : refs/heads/main   (oder dein Branch)
+#       Compose path   : framework/websocket-server/docker-compose.yml
+#  3. Env unten anpassen (API_URL / CORS_ORIGIN) → "Deploy the stack".
+#     Portainer klont das Repo, Docker baut das Image aus dem Dockerfile
+#     (Build-Kontext = framework/websocket-server/) und startet es.
 #
-#  2. Portainer → Stacks → Add stack → Build method: "Web editor"
-#     → Name z. B. "framework-ws" → DIESEN Inhalt einfügen.
+#  Erfolg im Container-Log: "WebSocket server running on 0.0.0.0:3001"
+#  Test auf dem Host:       curl http://localhost:3001/health → {"status":"ok"}
 #
-#  3. Werte unten anpassen:
-#       - volumes: linker Pfad = wohin du den Ordner in Schritt 1 kopiert hast
-#       - API_URL = Framework-Basis-URL, die der CONTAINER erreichen kann
-#                   (für WS-Token-Validierung via /api/websocket-token.php)
-#       - CORS_ORIGIN = Origin der Seite (für Tests auch "*")
-#     → "Deploy the stack".
+#  Bei Code-Updates: Datei(en) ins Repo pushen → in Portainer den Stack
+#  "Pull and redeploy" (baut das Image neu).
 #
-#  Erfolg: Container-Log zeigt "WebSocket server running on 0.0.0.0:3001".
-#  Test:   http://<host>:3001/health  →  {"status":"ok"}
-#
-#  Hinweis: DB ist NICHT nötig für den Dashboard-/Notification-Push-Test;
-#  ein On-Connect-Fehler beim Laden von Pending-Notifications wird nur
-#  geloggt und ist harmlos. node:20-alpine ist ein öffentliches Image;
-#  die Dependencies werden beim Start aus dem gemounteten Ordner installiert.
-#
-#  Danach noch nötig: wss-Reverse-Proxy (die https-Seite darf kein ws://
-#  öffnen) → diese öffentliche https/wss-URL in
+#  DB ist für den Push-Test NICHT nötig (On-Connect-Notification-Fehler
+#  wird nur geloggt). Danach noch: wss-Reverse-Proxy (nginx-proxy-manager,
+#  "Websockets Support" anhaken) → öffentliche https-URL in
 #  Einstellungen → System → ⚡ WebSocket eintragen.
 # ============================================================================
 services:
   framework-ws:
-    image: node:20-alpine
+    build: .                       # Build-Kontext = dieses Verzeichnis (Dockerfile daneben)
+    image: framework-ws:latest
     container_name: framework-ws
     restart: unless-stopped
-    working_dir: /app
-    volumes:
-      - /opt/framework-ws:/app          # ← Pfad aus Schritt 1
-    command: sh -c "npm install --omit=dev --no-audit --no-fund && node server.js"
     ports:
       - "3001:3001"
     environment:
