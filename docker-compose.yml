@@ -37,17 +37,25 @@ services:
   framework-ws:
     build: .                       # Build-Kontext = dieses Verzeichnis (Dockerfile daneben)
     image: framework-ws:latest
-    container_name: framework-ws
+    # STACK_NAME / EXTERNAL_PORT allow multiple instances of this server to
+    # coexist on the same Docker host (e.g. one prod + one test). Each stack
+    # MUST pick a unique STACK_NAME and a unique EXTERNAL_PORT.
+    # Defaults: framework-ws / 3001 — fine for the very first installation.
+    container_name: ${STACK_NAME:-framework-ws}
     restart: unless-stopped
     ports:
-      - "${WS_PORT:-3001}:3001"
+      # External host port : internal container port (always 3001)
+      - "${EXTERNAL_PORT:-3001}:3001"
     environment:
       # All values support Portainer Stack Environment Variables.
       # Syntax ${VAR:-default} → Portainer (or local .env) overrides default.
       # In the Framework Admin UI (Einstellungen → System → WebSocket →
       # Installations-Anleitung → Tab "Portainer Stack") you'll find an
       # auto-generated table with every variable + the exact value to paste.
-      WS_PORT: "${WS_PORT:-3001}"
+      # WS_PORT inside the container ALWAYS stays 3001 — the published port
+      # is controlled by EXTERNAL_PORT above. Keep this default unless you
+      # really know what you're doing.
+      WS_PORT: "3001"
       WS_HOST: "${WS_HOST:-0.0.0.0}"
       # CORS_ORIGIN: Browser-Origin(s) allowed to open a WebSocket.
       # Single-site:  "https://your-framework.example.com"

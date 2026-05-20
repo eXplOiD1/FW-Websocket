@@ -40,18 +40,29 @@ Repository-Stack). Das Framework verbindet sich per HTTPS-Reverse-Proxy.
    - Authentication: an, falls Repo privat
    - Compose path: `docker-compose.yml`
 
-3. **Environment-Variablen** unten im Stack-Formular → "Advanced mode":
+3. **Environment-Variablen** unten im Stack-Formular eintragen.
+   Einfachster Weg: Im Framework-UI den 📥 .env-Download-Button klicken
+   und die Datei in Portainer per **"Load variables from .env file"**
+   importieren — alle Werte sind dann auf einen Schlag drin.
+
+   Manuell:
 
    | Variable | Wert | Pflicht |
    |---|---|---|
+   | `STACK_NAME` | Container-Name (default `framework-ws`, für Test z.B. `framework-ws-test`) | ✓ |
+   | `EXTERNAL_PORT` | Host-Port (default `3001`, für 2. Instanz z.B. `3002`) | ✓ |
    | `CORS_ORIGIN` | Framework-Domain (z.B. `https://lyvion.example.com`) | ✓ |
    | `API_URL` | Framework-Base-URL (z.B. `https://lyvion.example.com`) | ✓ |
    | `WS_INTERNAL_SECRET` | Secret aus Schritt 1 | ✓ |
-   | `WS_PORT` | `3001` (default) | – |
    | `WS_HOST` | `0.0.0.0` (default) | – |
    | `LOG_LEVEL` | `info` (default) | – |
 
-   **Multi-Site:** `CORS_ORIGIN` als komma-separierte Liste:
+   **Multi-Instance auf demselben Docker-Host:** jeden Stack mit
+   eigenem `STACK_NAME` (eindeutiger Container-Name) und eigenem
+   `EXTERNAL_PORT` (eindeutige Host-Port-Bindung) deployen.
+
+   **Multi-Site (eine Instanz, mehrere Frontends):** `CORS_ORIGIN` als
+   komma-separierte Liste, z.B.
    `https://a.example.com,https://b.example.com`
 
 4. **Reverse-Proxy** für HTTPS/WSS aufsetzen. Nginx-Proxy-Manager:
