@@ -129,12 +129,16 @@ io.on('connection', async (socket) => {
 
         try {
             // Call PHP API to execute action
+            const reqHeaders = {
+                'Content-Type': 'application/json',
+                'X-Internal-Request': 'true'
+            };
+            if (config.api.internalSecret) {
+                reqHeaders['X-Internal-Secret'] = config.api.internalSecret;
+            }
             const response = await fetch(`${config.api.baseUrl}/api/task-action.php`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Internal-Request': 'true'
-                },
+                headers: reqHeaders,
                 body: JSON.stringify({
                     action: 'execute',
                     task_id,

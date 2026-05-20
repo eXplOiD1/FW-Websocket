@@ -1,33 +1,37 @@
 # ============================================================================
-# Framework WebSocket-Server — Portainer REPOSITORY-Stack (Image-Build)
+# FW-Websocket — Lyvion Framework Realtime Server (Portainer REPOSITORY-Stack)
 # ============================================================================
 #
-# WICHTIG: KEIN Bind-Mount. Der Code wird via Dockerfile INS IMAGE kopiert,
-# darum ist KEINE Datei auf dem Docker-Host nötig. Das vorherige ENOENT
-# (/app/package.json fehlt) kam vom leeren Host-Mount — der ist hier weg.
+# Standalone Repo. Eigenes GitHub-Repository, separat vom Framework-Hauptrepo.
+# Wird auf einem Docker-Host (Portainer) deployed; das Framework verbindet
+# sich via HTTPS-Reverse-Proxy mit diesem Container.
 #
-# So deployen:
-#  1. Diese Datei + das Dockerfile (beide in framework/websocket-server/)
-#     müssen im GitHub-Repo liegen (per GitHub-Uploader hochladen).
-#  2. Portainer → Stacks → Add stack → Build method: "Repository"
-#       Repository URL : <deine echte GitHub-Repo-URL>
-#       Authentication : AN falls privat (GitHub-User + Personal Access Token)
-#       Reference      : refs/heads/main   (oder dein Branch)
-#       Compose path   : framework/websocket-server/docker-compose.yml
-#  3. Env unten anpassen (API_URL / CORS_ORIGIN) → "Deploy the stack".
-#     Portainer klont das Repo, Docker baut das Image aus dem Dockerfile
-#     (Build-Kontext = framework/websocket-server/) und startet es.
+# Eine ausführliche Anleitung mit dem für DEINE Installation passenden Secret
+# und allen Domain-Werten findest du im Framework selbst unter:
+#   Einstellungen → System → ⚡ WebSocket → 📖 Installations-Anleitung
 #
-#  Erfolg im Container-Log: "WebSocket server running on 0.0.0.0:3001"
-#  Test auf dem Host:       curl http://localhost:3001/health → {"status":"ok"}
+# ─── Quick-Deploy via Portainer Repository-Mode ──────────────────────────
+#   Portainer → Stacks → Add stack → Build method: "Repository"
+#     Name             : framework-ws
+#     Repository URL   : https://github.com/<owner>/FW-Websocket
+#     Authentication   : AN falls Repo privat (GitHub-User + PAT)
+#     Repository ref.  : refs/heads/main
+#     Compose path     : docker-compose.yml          ← Root, nicht Subfolder
 #
-#  Bei Code-Updates: Datei(en) ins Repo pushen → in Portainer den Stack
-#  "Pull and redeploy" (baut das Image neu).
+#   Dann unten Environment variables → "Advanced mode" → die im Framework-UI
+#   gezeigten Werte eintragen (CORS_ORIGIN, API_URL, WS_INTERNAL_SECRET).
+#   → "Deploy the stack". Portainer pullt das Repo, baut das Image aus dem
+#   Dockerfile (Build-Kontext = Repo-Root) und startet den Container.
 #
-#  DB ist für den Push-Test NICHT nötig (On-Connect-Notification-Fehler
-#  wird nur geloggt). Danach noch: wss-Reverse-Proxy (nginx-proxy-manager,
-#  "Websockets Support" anhaken) → öffentliche https-URL in
-#  Einstellungen → System → ⚡ WebSocket eintragen.
+#   Erfolgs-Log : "WebSocket server running on 0.0.0.0:3001"
+#   Health-Test : curl http://<docker-host>:3001/health → {"status":"ok"}
+#
+#   Code-Updates: Repo updaten → in Portainer "Pull and redeploy" klicken.
+#
+# ─── Reverse-Proxy für HTTPS / WSS ──────────────────────────────────────
+#   Nginx-Proxy-Manager: Proxy Host anlegen, Source = host:3001,
+#   "Websockets Support" anhaken → öffentliche URL ist dann wss://...
+#   Manuelles Nginx-Snippet siehe Framework-UI (Anleitung Schritt 3).
 # ============================================================================
 services:
   framework-ws:
@@ -36,10 +40,28 @@ services:
     container_name: framework-ws
     restart: unless-stopped
     ports:
-      - "3001:3001"
+      - "${WS_PORT:-3001}:3001"
     environment:
-      WS_PORT: "3001"
-      WS_HOST: "0.0.0.0"
-      CORS_ORIGIN: "https://img.deuba24.com"
-      API_URL: "https://img.deuba24.com/tools/framework"
-      LOG_LEVEL: "info"
+      # All values support Portainer Stack Environment Variables.
+      # Syntax ${VAR:-default} → Portainer (or local .env) overrides default.
+      # In the Framework Admin UI (Einstellungen → System → WebSocket →
+      # Installations-Anleitung → Tab "Portainer Stack") you'll find an
+      # auto-generated table with every variable + the exact value to paste.
+      WS_PORT: "${WS_PORT:-3001}"
+      WS_HOST: "${WS_HOST:-0.0.0.0}"
+      # CORS_ORIGIN: Browser-Origin(s) allowed to open a WebSocket.
+      # Single-site:  "https://your-framework.example.com"
+      # Multi-site:   "https://site-a.example.com,https://site-b.example.com"
+      # NEVER leave on "*" in production — that disables CORS entirely.
+      CORS_ORIGIN: "${CORS_ORIGIN:-https://your-framework.example.com}"
+      # API_URL: Framework PHP API the WS server calls for token validation.
+      # In multi-site setups: exactly ONE framework instance — that's the
+      # authoritative one for auth. Other sites must share the SAME
+      # WS_INTERNAL_SECRET (their own framework/data/.ws-internal-secret).
+      API_URL: "${API_URL:-https://your-framework.example.com/framework}"
+      # WS_INTERNAL_SECRET: shared secret with the framework. Copy from:
+      # Framework → Einstellungen → System → WebSocket → "Internal Secret".
+      # Leave EMPTY to fall back to legacy loopback auth (only works when
+      # WS container and framework run on the same Docker host).
+      WS_INTERNAL_SECRET: "${WS_INTERNAL_SECRET:-}"
+      LOG_LEVEL: "${LOG_LEVEL:-info}"

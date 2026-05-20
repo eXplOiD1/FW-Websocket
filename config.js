@@ -18,10 +18,19 @@ module.exports = {
     port: process.env.WS_PORT || 3001,
     host: process.env.WS_HOST || '0.0.0.0',
 
-    // CORS settings
+    // CORS settings — supports multiple frameworks sharing one WS server.
+    // Set CORS_ORIGIN to a comma-separated list:
+    //   CORS_ORIGIN=https://site-a.example.com,https://site-b.example.com
+    // Single value or "*" still works exactly as before.
     cors: {
-        origin: process.env.CORS_ORIGIN || '*',
-        methods: ['GET', 'POST']
+        origin: (function() {
+            const raw = process.env.CORS_ORIGIN || '*';
+            if (raw === '*') return '*';
+            const list = raw.split(',').map(s => s.trim()).filter(Boolean);
+            return list.length > 1 ? list : (list[0] || '*');
+        })(),
+        methods: ['GET', 'POST'],
+        credentials: true
     },
 
     // Database settings (MySQL)
@@ -37,7 +46,13 @@ module.exports = {
     // PHP API settings (for token validation)
     api: {
         baseUrl: process.env.API_URL || 'http://localhost/framework',
-        tokenValidationEndpoint: '/api/websocket-token.php?action=validate'
+        tokenValidationEndpoint: '/api/websocket-token.php?action=validate',
+        // SECURITY: shared secret for the internal token-validate endpoint.
+        // Read from data/.ws-internal-secret on the framework host (generated
+        // automatically on first PHP call). Mount that file or set the env var
+        // explicitly. Without it the PHP side falls back to a loopback-only
+        // check on the legacy X-Internal-Request header.
+        internalSecret: process.env.WS_INTERNAL_SECRET || ''
     },
 
     // Connection settings
