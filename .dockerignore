@@ -1,0 +1,25 @@
+# Don't ship deps from the host into the image — npm install runs inside the Dockerfile
+node_modules
+
+# Don't ship local secrets / overrides
+.env
+.env.local
+.env.*.local
+
+# VCS / editor / docs (no need in the image)
+.git
+.gitignore
+.dockerignore
+.vscode
+.idea
+*.md
+LICENSE
+
+# Logs / runtime artifacts
+*.log
+logs
+
+# Build / dist
+dist
+build
+coverage
